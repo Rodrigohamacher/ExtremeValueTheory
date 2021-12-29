@@ -1,4 +1,6 @@
+from typing import Union
 import numpy as np
+import pandas as pd
 from scipy.stats import genextreme
 
 
@@ -41,6 +43,8 @@ class GPDC:
         xi_l = []
         q_negative_l = []
         for i, x0 in enumerate(self.X):
+            # x0 is the i th row
+            # return all the observations except the i th observation
             X_ = self.X.take(list(range(i))+list(range(i+1, self.n)), axis=0)
             xi_hat, R_nk = self._estimate_xi(x0, X_)
             q = self._compute_quantile(xi_hat, R_nk)
@@ -51,7 +55,28 @@ class GPDC:
         # print('s,t:', s, t)
         return s, t
 
-    def fit(self, X, y, k, alpha):
+    def fit(self,
+            X: Union[pd.DataFrame, np.array], 
+            y: Union[pd.DataFrame, np.array], 
+            k: int,  
+            alpha: float):
+        
+        """
+        Train model
+        
+        Parameters
+        ----------
+        X: pd.DataFrame or np.array
+            X_train 
+        y: pd.DataFrame or np.array
+            y_train
+        k: int
+            k higher distances
+        alpha: float
+            (1-alpha)-quantile od the negated_distance
+            Suggestion, choose alpha = 1/n, where n is the number of rows for X_train
+        """
+        
         assert 0 < alpha < 1, 'Wrong value of alpha!'
         self.k = k
         self.n, self.p = X.shape
