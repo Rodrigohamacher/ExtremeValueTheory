@@ -66,6 +66,7 @@ plt.show()
 gpdc = GPDC()
 gpdc.fit(X_train, y_train, k=20, alpha=0.1)
 
+# IGNORE - delete ----------------------------------------------------------------
 xi_l = []
 q_negative_l = []
 for i, x0 in enumerate(X_train[:2]):
@@ -80,6 +81,7 @@ for i, x0 in enumerate(X_train[:2]):
     q_negative_l.append(-q)
 s = np.quantile(xi_l, 1-alpha/2)
 t = np.quantile(q_negative_l, 1-alpha/2)
+#  ----------------------------------------------------------------
 
 
 # R = gpdc._compute_nagated_distances(xa,X1)
