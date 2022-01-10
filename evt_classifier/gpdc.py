@@ -9,23 +9,62 @@ class GPDC:
     The GPDC classifier.
     '''
 
-    def _compute_nagated_distances(self, x0, X):
+    def _compute_nagated_distances(self, x0: np.array, X: np.array) -> np.array:
         '''
-        x0:1 x p vector
-        X :n x p matrix
+        Calculates all the [R(i)] negated distances between x0 
+        and all the other observations of the dataset
+        
+        Parameters
+        ----------
+        x0: float
+            x0:1 x p vector
+            x0 are the values of a specific row on the dataset
+        X: float
+            X :n x p matrix
+            X is the remaning observations of the dataset, except the x0 observation
+
+        Returns
+        ----------
+        It returns [R(i)] a numpy array list of the negated distances (squared difference)
+        between x0 and all the other observations of the dataset 
         '''
         x0 = x0.reshape(1, -1)
+        # verifica se possuem a mesma qntd de features
         assert X.shape[1] == x0.shape[1], 'Wrong dimension of the new point!'
         D = np.sqrt(np.sum((X-x0)**2, axis=1))
         return -D
 
-    def _estimate_xi(self, x0, X):
-        k = self.k
-        R = self._compute_nagated_distances(x0, X)
-        R_selected = sorted(R)[-k:]
-        # print('R_selected', R_selected)
-        u = sorted(R)[-(k+1)]
+    def _estimate_xi(self, x0: np.array, X: np.array):
+        '''
+        Calculates and selects the [R(n+1-i) list] K highest negated distances 
+        and the [R(n-k)] K+1 highest negated distance between x0 and X.
+        Besides that, it calculates the Csi (ξ) of the x0 observation  
+        
+        Parameters
+        ----------
+        x0: float
+            x0:1 x p vector
+            x0 are the values of a specific row on the dataset
+        X: float
+            X :n x p matrix
+            X is the remaning observations of the dataset, except the x0 observation
+        
+        Returns
+        ----------
+        It returns the [R(n-k)] K+1 smallest negated distance 
+        between x0 and X and Csi (ξ) for x0.
+
+        '''
+                
+        k = self.k # k highest distances [-0.01 > -3.7 > -11]
+        # all the negated distances between x0 and all the other observations
+        R = self._compute_nagated_distances(x0, X) 
+        # Select the K highest negated distances
+        R_selected = sorted(R)[-k:] # --> R(n+1-i) list
+        # Select the K+1 highest negated distances
+        u = sorted(R)[-(k+1)] # --> R(n-k)
         assert u != 0
+        # calculates Csi (ξ) of the x0
         xi_hat = np.sum(np.log(R_selected/u))/k
         return xi_hat, u
 
@@ -36,9 +75,16 @@ class GPDC:
         q = R_nk*self.k**xi_hat
         return q
 
-    def _compute_thresholds(self, alpha):
+    def _compute_thresholds(self, alpha: float):
         '''
-        Set thresholds (s,t) to the (1-alpha/2) quantiles of the (xi^(1),...xi^(n)) and (-q^(1),...,-q^(n))
+        Set thresholds (s,t) to the (1-alpha/2) quantiles 
+        of the (xi^(1),...xi^(n)) and (-q^(1),...,-q^(n))
+        
+        Parameters
+        ----------
+        alpha: float
+            (1-alpha)-quantile of the negated_distance
+            Suggestion, choose alpha = 1/n, where n is the number of rows for X_train
         '''
         xi_l = []
         q_negative_l = []
@@ -46,10 +92,19 @@ class GPDC:
             # x0 is the i th row
             # return all the observations except the i th observation
             X_ = self.X.take(list(range(i))+list(range(i+1, self.n)), axis=0)
+            # for each x0 i th row observation, it will have an associated distribution
+            
+            # that considers the distance of x0 and all the remaining observations
+            # It returns the [R(n-k)] K+1 highest negated distance 
+            # between x0 and X and Csi (ξ) for x0.
             xi_hat, R_nk = self._estimate_xi(x0, X_)
+            
+            # *********** PAREI AQUI 09/01/2022 **************
             q = self._compute_quantile(xi_hat, R_nk)
+
             xi_l.append(xi_hat)
             q_negative_l.append(-q)
+
         s = np.quantile(xi_l, 1-alpha/2)
         t = np.quantile(q_negative_l, 1-alpha/2)
         # print('s,t:', s, t)
@@ -73,7 +128,7 @@ class GPDC:
         k: int
             k higher distances
         alpha: float
-            (1-alpha)-quantile od the negated_distance
+            (1-alpha)-quantile of the negated_distance
             Suggestion, choose alpha = 1/n, where n is the number of rows for X_train
         """
         

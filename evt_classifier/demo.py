@@ -23,7 +23,8 @@ data = pd.DataFrame(data={'x1': X1[:, 0], 'x2': X1[:, 1], 'y': Y1})
 sns.scatterplot(data['x1'], data['x2'], hue=data['y'])
 
 #%% TRAIN TEST SPLIT
-df_y0_y1 = data.loc[data['y'].isin([0, 1]), :].copy()
+# only classes 0, 1 for training data
+df_y0_y1 = data.loc[data['y'].isin([0, 1]), :].copy() 
 X = df_y0_y1.iloc[:,:-1]
 y = df_y0_y1.iloc[:,-1]
 
@@ -34,22 +35,24 @@ X_test: X of the classes 0, 1, 2
 y_test: y of the classes 0, 1, 2
 '''
 
-# train
+#%% train
 X_train, X_test, y_train, y_test  = train_test_split(X, y, 
-                                                      test_size=0.35, random_state=10)
+                                                    test_size=0.35,
+                                                    random_state=10)
 y_train = np.zeros(X_train.shape[0]) # making all train data of the same class 0
 print(f'Train Shape {X_train.shape, y_train.shape}')
 
-# test
-df_y2 = data.loc[data['y'].isin([2]), :].copy()
-X_test = pd.concat([X_test, df_y2.iloc[:,:2]]).reset_index(drop=True) # include class 2
-y_test = pd.concat([y_test, df_y2.iloc[:,-1]]).reset_index(drop=True) # include class 2
+#%% test
+df_y2 = data.loc[data['y'].isin([2]), :].copy() # get only class 2
+X_test = pd.concat([X_test, df_y2.iloc[:,:2]]
+                   ).reset_index(drop=True) # include class 2 at the end of X_test
+y_test = pd.concat([y_test, df_y2.iloc[:,-1]]
+                   ).reset_index(drop=True) # include class 2 at the end of y_test
 print(f'Test Shape {X_test.shape, y_test.shape}')
 
-# shuffle test set
+#%% shuffle test set
 from sklearn.utils import shuffle
-X_test, y_test = shuffle(X_test, y_test, random_state=10)
-
+X_test, y_test = shuffle(X_test, y_test, random_state=10) # shuffle data
 
 X_train = X_train.values
 X_test = X_test.values
@@ -64,7 +67,9 @@ plt.show()
 
 #%% MODEL
 gpdc = GPDC()
-gpdc.fit(X_train, y_train, k=20, alpha=0.1)
+suggested_alpha = 1/X.shape[1]
+# gpdc.fit(X_train, y_train, k=20, alpha=0.1)
+gpdc.fit(X_train, y_train, k=20, alpha=suggested_alpha)
 
 # IGNORE - delete ----------------------------------------------------------------
 xi_l = []
@@ -72,7 +77,6 @@ q_negative_l = []
 for i, x0 in enumerate(X_train[:2]):
     print(x0)
     
-    X_ =
     i=1
     X_train.take(list(range(i))+list(range(i+1, X_train.shape[0])), axis=0)
     xi_hat, R_nk = self._estimate_xi(x0, X_)
