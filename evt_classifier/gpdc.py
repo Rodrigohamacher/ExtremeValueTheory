@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Tuple, Union
 import numpy as np
 import pandas as pd
 from scipy.stats import genextreme
@@ -9,7 +9,7 @@ class GPDC:
     The GPDC classifier.
     '''
 
-    def _compute_nagated_distances(self, x0: np.array, X: np.array) -> np.array:
+    def _compute_nagated_distances(self, x0: list, X: list) -> list:
         '''
         Calculates all the [R(i)] negated distances between x0 
         and all the other observations of the dataset
@@ -34,7 +34,7 @@ class GPDC:
         D = np.sqrt(np.sum((X-x0)**2, axis=1))
         return -D
 
-    def _estimate_xi(self, x0: np.array, X: np.array):
+    def _estimate_xi(self, x0: list, X: list) -> Tuple[float, list]:
         '''
         Calculates and selects the [R(n+1-i) list] K highest negated distances 
         and the [R(n-k)] K+1 highest negated distance between x0 and X.
@@ -68,11 +68,23 @@ class GPDC:
         xi_hat = np.sum(np.log(R_selected/u))/k
         return xi_hat, u
 
-    def _compute_quantile(self, xi_hat, R_nk):
+    def _compute_quantile(self, xi_hat, R_nk, alpha: float) -> float:
         '''
-        Get (1-1/n)-quantile of R by R_(n-k)+H^(-1)(1-1/k)
+        Get (1-1/n)-quantile of R by R_(n-k)+H^(-1)(1-1/k) = R(n-k)(n*alpha/k)^-ξ
+        In this case, alpha
+        
+        Parameters
+        ----------
+        xi_hat: float
+            (1-alpha)-quantile of the negated_distance
+            Suggestion, choose alpha = 1/n, where n is the number of rows for X_train
+            
+        Returns
+        ----------
+        
         '''
-        q = R_nk*self.k**xi_hat
+        # q = R_nk*self.k**xi_hat
+        q = R_nk * (self.n * alpha/self.k) ** -xi_hat
         return q
 
     def _compute_thresholds(self, alpha: float):
@@ -85,6 +97,10 @@ class GPDC:
         alpha: float
             (1-alpha)-quantile of the negated_distance
             Suggestion, choose alpha = 1/n, where n is the number of rows for X_train
+            
+        Returns
+        ----------
+        
         '''
         xi_l = []
         q_negative_l = []
@@ -100,7 +116,7 @@ class GPDC:
             xi_hat, R_nk = self._estimate_xi(x0, X_)
             
             # *********** PAREI AQUI 09/01/2022 **************
-            q = self._compute_quantile(xi_hat, R_nk)
+            q = self._compute_quantile(xi_hat, R_nk, alpha)
 
             xi_l.append(xi_hat)
             q_negative_l.append(-q)
@@ -111,8 +127,8 @@ class GPDC:
         return s, t
 
     def fit(self,
-            X: Union[pd.DataFrame, np.array], 
-            y: Union[pd.DataFrame, np.array], 
+            X: Union[pd.DataFrame, list], 
+            y: Union[pd.DataFrame, list], 
             k: int,  
             alpha: float):
         

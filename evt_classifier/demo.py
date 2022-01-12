@@ -78,13 +78,20 @@ for i, x0 in enumerate(X_train[:2]):
     print(x0)
     
     i=1
-    X_train.take(list(range(i))+list(range(i+1, X_train.shape[0])), axis=0)
+    X_ = X_train.take(list(range(i))+list(range(i+1, X_train.shape[0])), axis=0)
     xi_hat, R_nk = self._estimate_xi(x0, X_)
     q = self._compute_quantile(xi_hat, R_nk)
     xi_l.append(xi_hat)
     q_negative_l.append(-q)
 s = np.quantile(xi_l, 1-alpha/2)
 t = np.quantile(q_negative_l, 1-alpha/2)
+
+D = np.sqrt(np.sum((X_-x0)**2, axis=1))
+R = -D
+k = 3
+R_selected = sorted(R)[-k:]
+u = sorted(R)[-(k+1)]
+        
 #  ----------------------------------------------------------------
 
 
@@ -103,6 +110,4 @@ if True:
     plt.scatter(X_test[:, 0], X_test[:, 1], c=ytest_hat,marker='o',s=180,alpha=0.5 )
     # plt.scatter(xa[0], xa[1], marker='x', color='green')
     plt.savefig('output/demo.png',dpi = 200,bbox_inches='tight')
-    plt.show()
-
-;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   a
+    plt.show();                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   a
