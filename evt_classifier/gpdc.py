@@ -43,16 +43,20 @@ class GPDC:
         Parameters
         ----------
         x0: float
-            x0:1 x p vector
+            x0: 1 x p vector
             x0 are the values of a specific row on the dataset
         X: float
-            X :n x p matrix
+            X : n x p matrix
             X is the remaning observations of the dataset, except the x0 observation
         
         Returns
         ----------
         It returns the [R(n-k)] K+1 smallest negated distance 
         between x0 and X and Csi (ξ) for x0.
+        
+        Csi (ξ) [it is a negative number] -  estimator of the parameter shape
+        of GEV distribution regarding that -D distribution is in the 
+        max domain of attraction of the GEV
 
         '''
                 
@@ -71,7 +75,8 @@ class GPDC:
     def _compute_quantile(self, xi_hat, R_nk, alpha: float) -> float:
         '''
         Get (1-1/n)-quantile of R by R_(n-k)+H^(-1)(1-1/k) = R(n-k)(n*alpha/k)^-ξ
-        In this case, alpha
+        In this case, alpha represents the mass of the ball around x0 where the 
+        -D distribution is used as aproximation
         
         Parameters
         ----------
@@ -80,6 +85,8 @@ class GPDC:
             Suggestion, choose alpha = 1/n, where n is the number of rows for X_train
             
         Returns
+            (1-1/n)-quantile of the distribution -D
+            q represents a limit to infer about the density F(x0) around x0 
         ----------
         
         '''
@@ -100,10 +107,10 @@ class GPDC:
             
         Returns
         ----------
-        
+            s, t thresholds to evaluate the new observation during the prediction phase
         '''
-        xi_l = []
-        q_negative_l = []
+        xi_l = [] # lista dos Csi para cada observação x0
+        q_negative_l = [] # lista dos -( (1 − γ)-quantil ) de −D para cada observação x0 
         for i, x0 in enumerate(self.X):
             # x0 is the i th row
             # return all the observations except the i th observation
@@ -114,8 +121,7 @@ class GPDC:
             # It returns the [R(n-k)] K+1 highest negated distance 
             # between x0 and X and Csi (ξ) for x0.
             xi_hat, R_nk = self._estimate_xi(x0, X_)
-            
-            # *********** PAREI AQUI 09/01/2022 **************
+            print(xi_hat)
             q = self._compute_quantile(xi_hat, R_nk, alpha)
 
             xi_l.append(xi_hat)
@@ -144,7 +150,10 @@ class GPDC:
         k: int
             k higher distances
         alpha: float
-            (1-alpha)-quantile of the negated_distance
+            It is a float number between 0 and 1 that will help to calculate
+            q => (1-alpha)-quantile of the negated_distance
+            Alpha represents the mass of the size of the ball around x0 by an aproximation
+            of function F using the distribution of -D
             Suggestion, choose alpha = 1/n, where n is the number of rows for X_train
         """
         
@@ -164,6 +173,9 @@ class GPDC:
         '''
         return: 1 -> unknown point detected.
         '''
+        # that considers the distance of the new observation x0 and all the training observations
+        # It returns the [R(n-k)] K+1 highest negated distance 
+        # between new observation x0 and X and Csi (ξ)
         xi_hat, R_nk = self._estimate_xi(x0, self.X)
         # First test
         if xi_hat*self.p > self.s:
