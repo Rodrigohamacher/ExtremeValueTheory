@@ -2,12 +2,29 @@ from typing import Tuple, Union
 import numpy as np
 import pandas as pd
 from scipy.stats import genextreme
-
-
 class GPDC:
     '''
     The GPDC classifier.
     '''
+    def __init__(self, k: int, alpha: float):
+        """
+        Init
+        
+        Parameters
+        ----------
+        k: int
+            k higher distances
+        alpha: float
+            It is a float number between 0 and 1 that will help to calculate
+            q => (1-alpha)-quantile of the negated_distance
+            Alpha represents the mass of the size of the ball around x0 by an aproximation
+            of function F using the distribution of -D
+            Suggestion, choose alpha = 1/n, where n is the number of rows for X_train
+        """
+
+        self.k = k
+        self.alpha = alpha        
+        assert 0 < alpha < 1, 'Wrong value of alpha!'
 
     def _compute_nagated_distances(self, x0: list, X: list) -> list:
         '''
@@ -60,19 +77,19 @@ class GPDC:
 
         '''
                 
-        k = self.k # k highest distances [-0.01 > -3.7 > -11]
+        # k highest distances [-0.01 > -3.7 > -11]
         # all the negated distances between x0 and all the other observations
         R = self._compute_nagated_distances(x0, X) 
         # Select the K highest negated distances
-        R_selected = sorted(R)[-k:] # --> R(n+1-i) list
+        R_selected = sorted(R)[-self.k:] # --> R(n+1-i) list
         # Select the K+1 highest negated distances
-        u = sorted(R)[-(k+1)] # --> R(n-k)
+        u = sorted(R)[-(self.k+1)] # --> R(n-k)
         assert u != 0
         # calculates Csi (ξ) of the x0
-        xi_hat = np.sum(np.log(R_selected/u))/k
+        xi_hat = np.sum(np.log(R_selected/u))/ self.k
         return xi_hat, u
 
-    def _compute_quantile(self, xi_hat, R_nk, alpha: float) -> float:
+    def _compute_quantile(self, xi_hat, R_nk) -> float:
         '''
         Get (1-1/n)-quantile of R by R_(n-k)+H^(-1)(1-1/k) = R(n-k)(n*alpha/k)^-ξ
         In this case, alpha represents the mass of the ball around x0 where the 
@@ -85,25 +102,22 @@ class GPDC:
             Suggestion, choose alpha = 1/n, where n is the number of rows for X_train
             
         Returns
-            (1-1/n)-quantile of the distribution -D
+            (1-1/alpha)-quantile of the distribution -D
             q represents a limit to infer about the density F(x0) around x0 
         ----------
         
         '''
         # q = R_nk*self.k**xi_hat
-        q = R_nk * (self.n * alpha/self.k) ** -xi_hat
+        q = R_nk * (self.n * self.alpha /self.k) ** -xi_hat
         return q
 
-    def _compute_thresholds(self, alpha: float):
+    def _compute_thresholds(self):
         '''
         Set thresholds (s,t) to the (1-alpha/2) quantiles 
         of the (xi^(1),...xi^(n)) and (-q^(1),...,-q^(n))
         
         Parameters
         ----------
-        alpha: float
-            (1-alpha)-quantile of the negated_distance
-            Suggestion, choose alpha = 1/n, where n is the number of rows for X_train
             
         Returns
         ----------
@@ -121,22 +135,19 @@ class GPDC:
             # It returns the [R(n-k)] K+1 highest negated distance 
             # between x0 and X and Csi (ξ) for x0.
             xi_hat, R_nk = self._estimate_xi(x0, X_)
-            print(xi_hat)
-            q = self._compute_quantile(xi_hat, R_nk, alpha)
+            q = self._compute_quantile(xi_hat, R_nk)
 
             xi_l.append(xi_hat)
             q_negative_l.append(-q)
 
-        s = np.quantile(xi_l, 1-alpha/2)
-        t = np.quantile(q_negative_l, 1-alpha/2)
+        s = np.quantile(xi_l, 1-self.alpha /2)
+        t = np.quantile(q_negative_l, 1-self.alpha /2)
         # print('s,t:', s, t)
         return s, t
 
     def fit(self,
             X: Union[pd.DataFrame, list], 
-            y: Union[pd.DataFrame, list], 
-            k: int,  
-            alpha: float):
+            y: Union[pd.DataFrame, list]):
         
         """
         Train model
@@ -147,23 +158,13 @@ class GPDC:
             X_train 
         y: pd.DataFrame or np.array
             y_train
-        k: int
-            k higher distances
-        alpha: float
-            It is a float number between 0 and 1 that will help to calculate
-            q => (1-alpha)-quantile of the negated_distance
-            Alpha represents the mass of the size of the ball around x0 by an aproximation
-            of function F using the distribution of -D
-            Suggestion, choose alpha = 1/n, where n is the number of rows for X_train
         """
-        
-        assert 0 < alpha < 1, 'Wrong value of alpha!'
-        self.k = k
+
         self.n, self.p = X.shape
         self.X = X
         self.y = y
         # compute thresholds
-        s, t = self._compute_thresholds(alpha)
+        s, t = self._compute_thresholds()
         assert s > -1, 'Wrong value of the estimated s!'
         assert t > 0, 'Wrong value of the estimated t!'
         self.s = s
@@ -178,7 +179,7 @@ class GPDC:
         # between new observation x0 and X and Csi (ξ)
         xi_hat, R_nk = self._estimate_xi(x0, self.X)
         # First test
-        if xi_hat*self.p > self.s:
+        if xi_hat * self.p > self.s:
             return 1
         else:
             # Second test
