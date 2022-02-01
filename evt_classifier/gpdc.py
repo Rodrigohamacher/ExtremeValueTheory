@@ -142,7 +142,7 @@ class GPDC:
 
         s = np.quantile(xi_l, 1-self.alpha /2)
         t = np.quantile(q_negative_l, 1-self.alpha /2)
-        # print('s,t:', s, t)
+        print(f's: {s}, t: {t} ')
         return s, t
 
     def fit(self,
